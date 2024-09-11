@@ -61,7 +61,7 @@ def get_actions_list_from_replay(path_to_replay):
     frames = full_data['frames']
 
     actions_list = []
-    timer = -8
+    timer = -10
     for frame in frames:
         timer += frame.delta
         actions_list.append((
@@ -81,7 +81,30 @@ def get_actions_list_from_replay(path_to_replay):
                 new_actions_list[i][3] = 1
         else:
             new_actions_list[i][3] = 0
-    return new_actions_list
+
+    for i in range(len(new_actions_list) - 2, 0, -1):
+        if new_actions_list[i][3] == 0:
+            if new_actions_list[i - 1][3] != 2:
+                new_actions_list[i][1] = new_actions_list[i + 1][1]
+                new_actions_list[i][2] = new_actions_list[i + 1][2]
+
+    actions_list = [[0, new_actions_list[1][1], new_actions_list[1][2], 0]]
+    for i in range(1, len(new_actions_list) - 1):
+        if new_actions_list[i][1:] != new_actions_list[i - 1][1:]:
+            if new_actions_list[i][3] == 0:
+                if new_actions_list[i - 1][3] == 2:
+                    actions_list[-1][3] = 0
+                    if new_actions_list[i + 1][3] == 0:
+                        actions_list.append(new_actions_list[i + 1].copy())
+                elif new_actions_list[i - 1][3] == 1:
+                    actions_list.append(new_actions_list[i].copy())
+                    actions_list[-1][0] = int(float((new_actions_list[i - 1][0] + new_actions_list[i + 1][0]) / 2))
+            else:
+                actions_list.append(new_actions_list[i].copy())
+
+    actions_list.append([actions_list[-1][0] + 15, actions_list[-1][1], actions_list[-1][2], 0])
+
+    return actions_list
 
 
 def apply_resolution(playfield_monitor, actions_list):
@@ -106,32 +129,15 @@ def main():
     # for item in hit_objs[-10:]:
     #     print(item)
 
-    starttime = time.time()
     actions_list = get_actions_list_from_replay(path_rep)
-    print(time.time() - starttime)
-    # print(actions_list)
+    print(len(actions_list))
+    for _ in actions_list:
+        print(_)
 
 
     # Нужно сохранить в файлик, чтобы каждый раз не трогать реплеи
     # actions_list_to_file(new_actions_list, 'osu_parse/1.bin')
     # file_actions_list = actions_list_from_file('osu_parse/1.bin')
-
-
-
-
-
-
-
-
-
-    """
-    mappedX = (hitObject.X * osuScale) + Playfield.Left  
-    mappedY = (hitObject.Y * osuScale) + Playfield.Top 
-    """
-
-
-
-
 
 
 

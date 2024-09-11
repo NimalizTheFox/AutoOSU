@@ -37,7 +37,7 @@ def click_and_move(action):
     elif action[3] == 1:
         pg.moveTo(action[1], action[2])
         pg.keyDown('z')
-        pg.sleep(0.008)
+        pg.sleep(0.01)
         pg.keyUp('z')
     else:
         pg.moveTo(action[1], action[2])
@@ -103,6 +103,8 @@ def main():
                     click_and_move(actions_list[action_iterator])
                     if action_iterator != len(actions_list)-1:
                         action_iterator += 1
+                    else:
+                        break
 
                 if old_timer == timer:
                     iterator += 1
