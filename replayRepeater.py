@@ -9,7 +9,7 @@ import random
 import pyautogui as pg
 
 from captureosu import get_playfield_monitor
-from osuparser import get_actions_list_from_replay, apply_resolution
+from osuparser import get_actions_list_from_replay
 
 pg.PAUSE = 0
 pg.FAILSAFE = False
@@ -30,17 +30,19 @@ def read_from_memory(process, memory_address):
     return int.from_bytes(process.read_memory(memory_address, 4), "little")
 
 
-def click_and_move(action):
+def click_and_move(playfield_monitor, action):
+    x = round(playfield_monitor['left'] + action[1] * playfield_monitor['width'])
+    y = round(playfield_monitor['top'] + action[2] * playfield_monitor['height'])
     if action[3] == 0:
         pg.keyUp('x')
-        pg.moveTo(action[1], action[2])
+        pg.moveTo(x, y)
     elif action[3] == 1:
-        pg.moveTo(action[1], action[2])
+        pg.moveTo(x, y)
         pg.keyDown('z')
         pg.sleep(0.01)
         pg.keyUp('z')
     else:
-        pg.moveTo(action[1], action[2])
+        pg.moveTo(x, y)
         pg.keyDown('x')
 
 
@@ -66,10 +68,10 @@ def main():
     # win32gui.ShowWindow(hwnd, 4)        # Вытаскивает окно из свернутого состояния, но не активирует
     win32gui.ShowWindow(hwnd, 5)        # Вытаскивает окно из свернутого состояния и активирует
     win32gui.SetForegroundWindow(hwnd)  # Активирует приложение
+    time.sleep(1)
 
     playfield_monitor = get_playfield_monitor(hwnd)
     actions_list = get_actions_list_from_replay(path_rep)
-    actions_list = apply_resolution(playfield_monitor, actions_list)
 
     timer_address = get_timer_address(osu_process, offsets) + offsets[-1]
 
@@ -94,14 +96,14 @@ def main():
             # ====== НАЧАЛО ПЕСНИ ======
             iterator = 0
             action_iterator = 0
-            while iterator < 5000:  # Пока таймер идет (смена занимает ~1800 чистых итераций)
+            while iterator < 5000:  # Пока таймер идет (смена занимает ~2000 чистых итераций)
                 old_timer = timer
                 time_timer = round((time.time() - start_time) * 1000)
                 timer = read_from_memory(osu_process, timer_address)
 
                 if time_timer > actions_list[action_iterator][0]:
-                    click_and_move(actions_list[action_iterator])
-                    if action_iterator != len(actions_list)-1:
+                    click_and_move(playfield_monitor, actions_list[action_iterator])
+                    if action_iterator != len(actions_list) - 1:
                         action_iterator += 1
                     else:
                         break
