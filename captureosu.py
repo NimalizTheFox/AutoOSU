@@ -11,23 +11,13 @@ pg.PAUSE = 0
 pg.FAILSAFE = False
 
 
-def click(monitor, x, y):
-    window_x = monitor['left']
-    window_y = monitor['top']
-    # pg.moveTo(window_x + x, window_y + y)
-    pg.click(window_x + x, window_y + y)
-    # pg.keyDown('x')     # Воспринимается, но в NOTE внутри сказано, что может он вероятно одноразовый, не зажимается
-
-
 def get_frame(monitor):
     """
     Костыль, чтобы заставить GC видеть mss, иначе происходит утечка памяти
     :param monitor: область экрана, в которой нужно сделать скриншот
     :return: изображение как numpy массив
     """
-    with mss.mss() as sct:
-        sct_img = sct.grab(monitor)
-        return np.asarray(sct_img)
+    return np.asarray(mss.mss().grab(monitor))
 
 
 def get_playfield_monitor(hwnd):
@@ -54,6 +44,8 @@ def get_playfield_monitor(hwnd):
 
 
 def main():
+    image_shape = (80, 60)
+
     # Возимся с разрешением и положением окна осу, делаем его главным окном
     hwnd = win32gui.FindWindow(None, "osu!")
     win32gui.ShowWindow(hwnd, 4)        # Вытаскивает окно из свернутого состояния, но не активирует
@@ -62,44 +54,36 @@ def main():
     playfield_monitor = get_playfield_monitor(hwnd)
     print(playfield_monitor)
 
-    # screenshot = get_frame(monitor)
-
-    # screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY)  # Переводим в ЧБ
-    # screenshot = cv2.resize(screenshot, dsize=(image_shape[0], image_shape[1]), interpolation=cv2.INTER_AREA)
-    # screenshot = screenshot.astype("float32") / 255
-    # screenshot = np.expand_dims(screenshot, -1)
-
-    fps_buffer = [0. for _ in range(120)]
-    old_lime = time.time()
-    iterator = 0
-    screenshot = get_frame(playfield_monitor)
 
     MAX_FPS = 30
     MIN_FRAME_TIME = 1/MAX_FPS - 1/60
 
     new_time = time.time() - 10
+    iterator = 0
+    while True:
+        start = time.time()
 
-    # while True:
-    #     start = time.time()
-    #
-    #     if iterator % 50 == 0:
-    #         old_lime = new_time
-    #         new_time = time.time()
-    #         print(f"\rFPS: {1/((new_time - old_lime)/50)}", end='')
-    #
-    #     # screenshot = get_frame(monitor)
-    #     screenshot = get_frame(playfield_monitor)
-    #     cv2.imshow('frame', screenshot)
-    #
-    #     iterator += 1
-    #
-    #     if cv2.waitKey(1) == ord('q'):
-    #         break
-    #
-    #     time.sleep(max(0., MIN_FRAME_TIME - (time.time() - start)))
-    #
-    #
-    # cv2.destroyAllWindows()
+        if iterator % 50 == 0:
+            old_lime = new_time
+            new_time = time.time()
+            print(f"\rFPS: {1/((new_time - old_lime)/50)}", end='')
+            iterator = 0
+
+        screenshot = get_frame(playfield_monitor)
+        # screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY)  # Переводим в ЧБ
+        # screenshot = cv2.resize(screenshot, dsize=(image_shape[0], image_shape[1]), interpolation=cv2.INTER_AREA)
+        # screenshot = cv2.resize(screenshot, dsize=(640, 480), interpolation=cv2.INTER_AREA)
+        cv2.imshow('frame', screenshot)
+
+        iterator += 1
+
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+        time.sleep(max(0., MIN_FRAME_TIME - (time.time() - start)))
+
+
+    cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
