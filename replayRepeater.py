@@ -3,9 +3,6 @@ import windows
 import prprcedog
 import win32gui
 import os
-# import math
-import random
-
 import pyautogui as pg
 
 from captureosu import get_playfield_monitor
@@ -37,6 +34,7 @@ def click_and_move(playfield_monitor, action):
         pg.keyUp('x')
         pg.moveTo(x, y)
     elif action[3] == 1:
+        pg.keyUp('x')   # На случай, если идет сразу после д2
         pg.moveTo(x, y)
         pg.keyDown('z')
         pg.sleep(0.01)
@@ -47,12 +45,13 @@ def click_and_move(playfield_monitor, action):
 
 
 def main():
+    """Чит для osu! на идеальное прохождение карт. Тут отрабатывается скорость взаимодействия управления с игрой."""
     process_name = "osu!.exe"
     path_rep = 'osu_repls/osu! - Nanakura Rin (CV Hayami Saori) & Kitahama Eiji (CV Okamoto Nobuhiko) - Blouse [Normal] (2024-09-07) Osu.osr'
 
     osu_process = None
 
-    offsets = (0x128, 0x58, 0x32C, 0xC64)
+    offsets = (0x128, 0x58, 0x32C, 0xC64)   # Для версии b20240820.1
 
     # Запуск и выделение процесса osu
     while osu_process is None:
@@ -106,6 +105,7 @@ def main():
                     if action_iterator != len(actions_list) - 1:
                         action_iterator += 1
                     else:
+                        print('Конец маршрута повтора')
                         break
 
                 if old_timer == timer:
@@ -113,6 +113,7 @@ def main():
                 else:
                     # print(timer, time_timer, time_timer - timer)
                     iterator = 0
+            print('Конец цикла повтора')
 
 
 

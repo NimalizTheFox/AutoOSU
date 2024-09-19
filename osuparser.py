@@ -18,10 +18,6 @@ def parser_repls(path: str):
     """Нужен .osr файл"""
     data = ReplayFile.from_file(path)
     info = data.__dict__
-    # pure_lzma = ReplayFile.from_file("test.osr", pure_lzma= True) This will return only lzma content.
-    # data = ReplayFile.from_bytes(replay_files) you can also use pure bytes.
-    # for d, e in info.items():
-    #     print(f"{d}: {e}")  # Prints members of class.
     return info
 
 
@@ -41,11 +37,12 @@ def actions_list_from_file(filename):
 
 
 def get_actions_list_from_replay(path_to_replay):
+    """Получение маршрута из повтора, +обработка маршрута для оптимизации траекторий"""
     full_data = parser_repls(path_to_replay)    # Получение полных данных реплея
     frames = full_data['frames']    # Получение действий из всех данных
 
     actions_list = []
-    timer = -10     # Смещение таймера, иначе действие производится слишком поздно
+    timer = -20     # Смещение таймера, иначе действие производится слишком поздно
     for frame in frames:
         timer += frame.delta
         actions_list.append((
