@@ -1,8 +1,6 @@
 import cv2
 import mss
 import win32gui
-import win32api
-import win32con
 import numpy as np
 import time
 import pyautogui as pg
@@ -15,6 +13,14 @@ def get_frame(monitor):
     :return: изображение как numpy массив
     """
     return np.asarray(mss.mss().grab(monitor))
+
+
+def get_hwnd(window_name="osu!"):
+    hwnd = win32gui.FindWindow(None, window_name)
+    win32gui.ShowWindow(hwnd, 5)        # Вытаскивает окно из свернутого состояния, но не активирует
+    win32gui.SetForegroundWindow(hwnd)  # Активирует приложение
+    time.sleep(0.3)
+    return hwnd
 
 
 def get_playfield_monitor(hwnd):
@@ -52,10 +58,7 @@ def main():
     image_shape = (80, 60)
 
     # Возимся с разрешением и положением окна осу, делаем его главным окном
-    hwnd = win32gui.FindWindow(None, "osu!")
-    win32gui.ShowWindow(hwnd, 4)        # Вытаскивает окно из свернутого состояния, но не активирует
-    win32gui.SetForegroundWindow(hwnd)  # Активирует приложение
-
+    hwnd = get_hwnd()
     playfield_monitor = get_playfield_monitor(hwnd)
 
     MAX_FPS = 30

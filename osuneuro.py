@@ -6,8 +6,8 @@ import tensorflow as tf
 
 
 @tf.function
-def compute_action(model: keras.Model, data):
-    result = model(data)
+def compute_action(model: keras.Model, np_screenshots):
+    result = model(np_screenshots)
     return result[0, :2], tf.argmax(result[0, 2:])
 
 
