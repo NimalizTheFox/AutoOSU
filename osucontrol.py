@@ -21,7 +21,7 @@ class MenuController:
         y = round(self.playfield_monitor['top'] + cords[1] * self.playfield_monitor['height'])
         pg.moveTo(x, y)
         pg.click()
-        time.sleep(0.5)
+        pg.sleep(0.5)
 
     def _press_key(self, key_name):
         pg.keyDown(key_name)
@@ -54,10 +54,28 @@ class MenuController:
         self.to_top_song_list()
         for _ in range(cords[0]):
             self._press_key('down')
+            pg.sleep(0.05)
         for _ in range(cords[1]):
             self._press_key('right')
+            pg.sleep(0.05)
 
+    def save_replay(self):
+        self._press_key('f2')
 
+    def start_current_song(self):
+        pg.sleep(0.1)
+        self._mouse_click((0.55, 0.43))
+        pg.sleep(0.05)
+        self._mouse_click((0.55, 0.43))
+
+    def speedup_replay(self):
+        pg.sleep(0.06)
+        self._mouse_click((1.02, 0.27))
+
+    def escape_from_results(self):
+        pg.sleep(0.1)
+        self._press_key('esc')
+        pg.sleep(0.4)
 
 class PlayFieldController:
     def __init__(self, playfield_monitor):
@@ -102,8 +120,13 @@ def main():
 
     menu = MenuController(playfield_monitor, len(get_song_list(OSU_PATH)))
     # menu.from_start_to_song_list()
-    menu.to_top_song_list()
+    # menu.to_top_song_list()
     menu.autoplay_mod_on()
+
+    menu.choose_certain_song((3, 0))
+    menu.start_current_song()
+    menu.speedup_replay()
+
 
 
 if __name__ == '__main__':

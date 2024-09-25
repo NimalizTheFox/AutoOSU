@@ -54,6 +54,13 @@ def screenshot_standardization(screenshot: np.ndarray, image_shape: tuple[int, i
     return np.expand_dims(screenshot, -1)
 
 
+def put_new_screenshot_in_array(np_screenshots, screenshot):
+    np_screenshots = np.roll(np_screenshots, -1, axis=1)
+    np_screenshots[0][-1] = screenshot
+    return np_screenshots
+
+
+
 def main():
     image_shape = (80, 60)
 

@@ -1,9 +1,8 @@
 import time
-
-from osupyparser import OsuFile
-from osupyparser import ReplayFile
+import windows
+from osupyparser import OsuFile, ReplayFile
 import struct
-
+import os
 
 def parser_map(path: str):
     """Нужен .osu файл"""
@@ -21,13 +20,13 @@ def parser_repls(path: str):
     return info
 
 
-def actions_list_to_file(actions_list, filename):
+def save_actions_list(actions_list, filename):
     with open(filename, 'wb') as f:
         for actions in actions_list:
             f.write(struct.pack('i 2f h', actions[0], actions[1], actions[2], actions[3]))
 
 
-def actions_list_from_file(filename):
+def read_actions_list(filename):
     actions_list = []
     with open(filename, 'rb') as f:
         while i1 := f.read(14):
@@ -85,8 +84,25 @@ def get_actions_list_from_replay(path_to_replay):
                 actions_list.append(new_actions_list[i].copy())
 
     actions_list.append([actions_list[-1][0] + 15, actions_list[-1][1], actions_list[-1][2], 0])
+    # Удалить половину или две трети всех двоек, они не нужны для работы, но занимают цикл
 
     return actions_list
+
+
+def get_osu_process(osu_folder):
+    """Возвращает хендлер процесса osu! для таймера, если нет процесса, то запускает osu!"""
+    osu_process = None
+    process_name = "osu!.exe"
+    while osu_process is None:
+        process_list = windows.system.enumerate_processes()
+        for process in process_list:
+            if process.name == process_name:
+                osu_process = process
+                break
+        if osu_process is None:
+            os.startfile(osu_folder)
+            time.sleep(2)
+    return osu_process
 
 
 def main():
@@ -99,8 +115,8 @@ def main():
 
     # Нужно сохранить в файл, чтобы каждый раз не трогать реплеи
     # 9 мс (Запись на диск - 7 мс, Чтение с диска - 1 мс), вместо 20 мс
-    actions_list_to_file(actions_list, 'osu_parse/1.bin')       # Запись действий реплея на диск (~8мс на 1881 действие)
-    file_actions_list = actions_list_from_file('osu_parse/1.bin')   # Чтение действий реплея (~1 мс на 1881 действий)
+    save_actions_list(actions_list, 'osu_parse/1.bin')       # Запись действий реплея на диск (~8мс на 1881 действие)
+    file_actions_list = read_actions_list('osu_parse/1.bin')   # Чтение действий реплея (~1 мс на 1881 действий)
     print(len(file_actions_list))
 
 

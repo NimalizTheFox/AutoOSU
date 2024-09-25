@@ -1,6 +1,9 @@
 import os
 import struct
 
+OSU_PATH = r"D:\Games\osu!"
+if not os.path.exists(OSU_PATH):
+    OSU_PATH = r"C:\Games\osu!"
 
 def create_topology():
     if not os.path.isdir('data'):
@@ -81,15 +84,29 @@ def get_songs_from_folders(osu_folder):
     return song_dict
 
 
+def get_last_replay(osu_folder):
+    "Возвращает последний созданный файл или None, если файлов нет"
+    files = [os.path.join(osu_folder, f) for f in os.listdir(osu_folder)]
+    if not files:
+        return None
+    latest_file = max(files, key=os.path.getctime)
+    return latest_file
+
+
+def save_record(record, name):
+    number = len(record)
+    # TODO: доделать
+
+
+
+
+
 
 def main():
-    OSU_PATH = r"D:\Games\osu!"
-    if not os.path.exists(OSU_PATH):
-        OSU_PATH = r"C:\Games\osu!"
-
-    song_dict = get_songs_from_folders(OSU_PATH)
-    for d, e in song_dict.items():
-        print(f"{d}: {e}")
+    # song_dict = get_songs_from_folders(OSU_PATH)
+    # for d, e in song_dict.items():
+    #     print(f"{d}: {e}")
+    print(get_last_replay(OSU_PATH + r'\Replays'))
 
 
 if __name__ == '__main__':
