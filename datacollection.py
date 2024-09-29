@@ -1,13 +1,15 @@
-import os
+import time
 
 import osufiles
-from captureosu import *
+from captureosu import screenshot_standardization, get_frame, get_hwnd, get_playfield_monitor
 from osucontrol import MenuController
 from osuparser import get_osu_process, get_actions_list_from_replay, save_actions_list, read_actions_list
 from replayRepeater import get_timer_address, read_from_memory, click_and_move
 
 
-def get_replay_current_song(menu: MenuController, osu_process, timer_address):
+def get_replay_current_song(menu: MenuController, osu_process, timer_address, image_shape, max_fps):
+    min_frame_time = 1 / max_fps - 1 / 60
+
     record = []
     menu.autoplay_mod_on()
     menu.start_current_song()
@@ -27,29 +29,36 @@ def get_replay_current_song(menu: MenuController, osu_process, timer_address):
 
     start_time += (time_timer - timer - 1) / 1000  # Система смещения, чтобы таймеры соответствовали друг-другу
 
-    # Начало, собсна, песни
+    # Начало песни
     iterator = 0
-    while iterator < 10:  # Пока таймер идет (смена занимает ~2000 чистых итераций)
+    frames = 0
+    while iterator < 10:  # Пока таймер идет (смена занимает ~2000 чистых итераций, но тк у нас съемка, то 10 кадров)
+        start = time.time()
+
         old_timer = timer
         time_timer = round((time.time() - start_time) * 1000)
         timer = read_from_memory(osu_process, timer_address)
 
         screenshot = get_frame(menu.playfield_monitor)
-        record.append((screenshot, time_timer))
+        record.append((screenshot_standardization(screenshot, image_shape), time_timer))
+        frames += 1
 
-        if old_timer == timer:
+        if old_timer == timer and timer > 10000:
             iterator += 1
         else:
             iterator = 0
 
-    menu.save_replay()
-    menu.escape_from_results()
+        time.sleep(max(0., min_frame_time - (time.time() - start)))     # Обеспечение нужного фреймрейта
 
-    last_replay = osufiles.get_last_replay(osufiles.OSU_PATH + r'\Replays')
-    action_list = get_actions_list_from_replay(last_replay)
-    name = last_replay[last_replay.rfind('//') + 8: -21]
-    actions_path = rf'data/osu_parse/{name}.bin'
-    save_actions_list(action_list, actions_path)
+    menu.save_replay()          # Жмакаем f2, чтобы сохранить повтор
+    menu.escape_from_results()  # Выходим в список песен
+    print('Количество кадров:', frames)
+
+    last_replay = osufiles.get_last_file(osufiles.OSU_PATH + r'\Replays')
+    action_list = get_actions_list_from_replay(last_replay)     # Получаем список действий из повтора + обработка
+    name = last_replay[last_replay.rfind('\\') + 8: -21]        # Поучаем название песни
+    actions_path = rf'data\osu_parse\{name}.bin'
+    save_actions_list(action_list, actions_path)                # И сохраняем в папку проекта
     return actions_path, record
 
 
@@ -99,33 +108,53 @@ def record_repetition(menu: MenuController, actions_path, osu_process, timer_add
     return record
 
 
-def record_processing(actions_path, record, image_shape):
+def vectorization_action(action, amount_actions):
+    """Возвращает вектор из 0 и 1, где 1 - нужное действие по индексу"""
+    return tuple([0 if i != action else 1 for i in range(amount_actions)])
+
+
+def record_processing(actions_path, record):
     """Преобразует скриншоты и пишет действия вместо временных меток, плюс сохраняет"""
-    record = [(screenshot_standardization(item[0], image_shape), item[1]) for item in record]
+    # record = [(item[0], item[1]) for item in record]
+    # record = [[(скрин_стандартизированный_np), таймер], [...]]
+
     record_opt = [[item[0], 0] for item in record]
+    # изначально -  record_opt = [[(скрин_стандартизированный_np), 0], [...]]
+    # после -       record_opt = [[(скрин_стандартизированный_np), [корд1, корд2, действие_в_векторе(1, 0, 0)]], [...]]
+
     action_list = read_actions_list(actions_path)
+    # action_list = [[тайминг, корд1, корд2, действие], [...]]
 
-    name = actions_path[actions_path.rfind('//') + 8: -21]
+    for i in range(len(action_list)):
+        action_list[i][3] = vectorization_action(action_list[i][3], 3)
+    # action_list = [[тайминг, корд1, корд2, (действие_вект)], [...]]
 
+    # Убираем расширение файла и путь до файла, оставляем только имя песни
+    name = actions_path[actions_path.rfind('\\') + 1: -4]
+
+    # Заполняем фреймы с первым действием
     frame_i = 1
     act_iterator = 0
     finish_1 = False
     while act_iterator < len(action_list) and not finish_1:
+        # Проходимся по всем первым действиям
         while action_list[act_iterator][3] != 1 and not finish_1:
+            # Пока есть первые действия - двигаемся
             if act_iterator < len(action_list) - 1:
                 act_iterator += 1
             else:
                 finish_1 = True
-
+        # Ищем ближайший фрейм к действию по таймингу
         while record[frame_i][1] < action_list[act_iterator][0] and not finish_1:
             if frame_i < len(record) - 1:
                 frame_i += 1
             else:
                 finish_1 = True
-
+        # Если действия или скриншоты не кончились, то записываем действия
         if not finish_1:
             record_opt[frame_i - 1][1] = action_list[act_iterator][1:]
 
+    # Заполняем оставшиеся фреймы со вторым действием
     frame_i = 1
     act_iterator = 0
     finish_2 = False
@@ -142,9 +171,10 @@ def record_processing(actions_path, record, image_shape):
             else:
                 finish_2 = True
 
-        if not finish_2 and record_opt[frame_i - 1] == 0:
+        if not finish_2 and record_opt[frame_i - 1][1] == 0:
             record_opt[frame_i - 1][1] = action_list[act_iterator][1:]
 
+    # Заполняем оставшиеся фреймы с нулевым действием
     frame_i = 1
     act_iterator = 0
     finish_0 = False
@@ -161,20 +191,22 @@ def record_processing(actions_path, record, image_shape):
             else:
                 finish_0 = True
 
-        if not finish_0 and record_opt[frame_i - 1] == 0:
+        if not finish_0 and record_opt[frame_i - 1][1] == 0:
             record_opt[frame_i - 1][1] = action_list[act_iterator][1:]
-    osufiles.save_record(record_opt, name)   # Не доделано!
-    # TODO: Доделать сохранение в osufiles.py
 
+    if record_opt[-1][1] == 0:
+        record_opt[-1][1] = [0.5, 0.5, (1, 0, 0)]
 
+    # Заполняем оставшиеся
+    for i in range(len(record_opt) - 2, -1, -1):
+        if record_opt[i][1] == 0:
+            record_opt[i][1] = [record_opt[i + 1][1][0], record_opt[i + 1][1][1], (1, 0, 0)]
 
-
-
-
-
+    osufiles.save_record(record_opt, name)
 
 
 def main():
+    max_fps = 30
     offsets = (0x128, 0x58, 0x32C, 0xC64)   # Для версии b20240820.1
     image_shape = (80, 60)
     osu_folder = osufiles.OSU_PATH
@@ -187,16 +219,9 @@ def main():
 
     menu = MenuController(playfield_monitor, len(osufiles.get_song_list(osu_folder)))
 
-    actions_path, record = get_replay_current_song(menu, osu_process, timer_address)
+    actions_path, record = get_replay_current_song(menu, osu_process, timer_address, image_shape, max_fps)
     # record = record_repetition(menu, actions_path, osu_process, timer_address)
-    record_processing(actions_path, record, image_shape)
-
-
-
-
-
-
-
+    record_processing(actions_path, record)
 
 
 if __name__ == '__main__':
