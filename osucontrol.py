@@ -61,6 +61,7 @@ class MenuController:
 
     def save_replay(self):
         self._press_key('f2')
+        pg.sleep(2)
 
     def start_current_song(self):
         pg.sleep(0.1)
@@ -73,7 +74,7 @@ class MenuController:
         self._mouse_click((1.02, 0.27))
 
     def escape_from_results(self):
-        pg.sleep(0.1)
+        pg.sleep(0.2)
         self._press_key('esc')
         pg.sleep(0.4)
 

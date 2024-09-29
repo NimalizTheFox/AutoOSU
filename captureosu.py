@@ -12,7 +12,9 @@ def get_frame(monitor):
     :param monitor: область экрана, в которой нужно сделать скриншот
     :return: изображение как numpy массив
     """
-    return np.asarray(mss.mss().grab(monitor))
+    with mss.mss() as sct:
+        sct_img = sct.grab(monitor)
+        return np.asarray(sct_img)
 
 
 def get_hwnd(window_name="osu!"):
@@ -50,7 +52,7 @@ def screenshot_standardization(screenshot: np.ndarray, image_shape: tuple[int, i
     """Перевод скриншота в ЧБ, изменение размера и стандартизация до [0..1] каждого пикселя"""
     screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY)  # Переводим в ЧБ
     screenshot = cv2.resize(screenshot, dsize=(image_shape[0], image_shape[1]), interpolation=cv2.INTER_AREA)
-    screenshot = screenshot.astype("float32") / 255
+    screenshot = screenshot.astype("float16") / 255
     return np.expand_dims(screenshot, -1)
 
 

@@ -23,7 +23,7 @@ ress = []
 start_time = time.time()
 
 # Чёрная заглушка для первого набора скриншотов
-np_screenshots = np.zeros(shape=(1, images_in_set, image_shape[1], image_shape[0], 1))
+np_screenshots = np.zeros((1, images_in_set, image_shape[1], image_shape[0], 1), np.float16)
 
 for i in range(10):
     start = time.time()

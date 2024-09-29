@@ -30,7 +30,7 @@ def read_actions_list(filename):
     actions_list = []
     with open(filename, 'rb') as f:
         while i1 := f.read(14):
-            actions_list.append(struct.unpack('i 2f h', i1))
+            actions_list.append(list(struct.unpack('i 2f h', i1)))
         f.close()
     return actions_list
 
