@@ -24,7 +24,7 @@ def get_timer_address(osu_process, offsets):
 
 
 def read_from_memory(process, memory_address):
-    return int.from_bytes(process.read_memory(memory_address, 4), "little")
+    return int.from_bytes(process.read_memory(memory_address, 4), "little", signed=True)
 
 
 def click_and_move(playfield_monitor, action):

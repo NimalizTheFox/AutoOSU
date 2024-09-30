@@ -37,7 +37,8 @@ def read_actions_list(filename):
 
 def get_actions_list_from_replay(path_to_replay):
     """Получение маршрута из повтора, +обработка маршрута для оптимизации траекторий"""
-    full_data = parser_repls(path_to_replay)    # Получение полных данных реплея
+    full_data = parser_repls(path_to_replay)    # Получение полных данных повтора
+    os.remove(path_to_replay)       # Удаляем повтор, чтобы не путать последующие запуски
     frames = full_data['frames']    # Получение действий из всех данных
 
     actions_list = []

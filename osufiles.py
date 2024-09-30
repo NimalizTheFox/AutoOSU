@@ -115,12 +115,8 @@ def read_record(record_path, image_shape):
     with open(record_path, 'rb') as f:
         record_file_comp = f.read()
 
-    print(len(record_file_comp))
     record_file = zlib.decompress(record_file_comp)
-    print(len(record_file))
-
     length = struct.unpack('i', record_file[:4])[0]
-    print(length)
 
     record = []
     offset = 4

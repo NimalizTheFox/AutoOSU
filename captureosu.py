@@ -25,6 +25,10 @@ def get_hwnd(window_name="osu!"):
     return hwnd
 
 
+def get_window_text(hwnd):
+    return win32gui.GetWindowText(hwnd)
+
+
 def get_playfield_monitor(hwnd):
     rect = win32gui.GetWindowRect(hwnd)
     x = rect[0] + 3
