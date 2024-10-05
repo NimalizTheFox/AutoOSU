@@ -53,11 +53,12 @@ class MenuController:
         # Выбор конкретной песни из всех
         self.to_top_song_list()
         for _ in range(cords[0]):
-            self._press_key('down')
-            pg.sleep(0.05)
-        for _ in range(cords[1]):
             self._press_key('right')
-            pg.sleep(0.05)
+            pg.sleep(0.2)
+        for _ in range(cords[1]):
+            self._press_key('down')
+            pg.sleep(0.2)
+
 
     def save_replay(self):
         self._press_key('f2')

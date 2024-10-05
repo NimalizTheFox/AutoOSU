@@ -38,7 +38,6 @@ def read_actions_list(filename):
 def get_actions_list_from_replay(path_to_replay):
     """Получение маршрута из повтора, +обработка маршрута для оптимизации траекторий"""
     full_data = parser_repls(path_to_replay)    # Получение полных данных повтора
-    os.remove(path_to_replay)       # Удаляем повтор, чтобы не путать последующие запуски
     frames = full_data['frames']    # Получение действий из всех данных
 
     actions_list = []
@@ -87,6 +86,8 @@ def get_actions_list_from_replay(path_to_replay):
     actions_list.append([actions_list[-1][0] + 15, actions_list[-1][1], actions_list[-1][2], 0])
     # Удалить половину или две трети всех двоек, они не нужны для работы, но занимают цикл
 
+    os.remove(path_to_replay)       # Удаляем повтор, чтобы не путать последующие запуски
+
     return actions_list
 
 
@@ -101,7 +102,7 @@ def get_osu_process(osu_folder):
                 osu_process = process
                 break
         if osu_process is None:
-            os.startfile(osu_folder)
+            os.startfile(osu_folder + '\\osu!.exe')
             time.sleep(2)
     return osu_process
 

@@ -140,10 +140,9 @@ def actions_processing(action_list, record, record_opt, action):
 
 
 def record_processing(actions_path, record):
-    """Преобразует скриншоты и пишет действия вместо временных меток, плюс сохраняет"""
-    print('Начало преобразования записи')
-
-    print('\r[0/5] Вытаскиваем действия из повтора...', end='')
+    """Пишет действия вместо временных меток и сохраняет"""
+    print('\tПреобразование записи...')
+    print('\r\t[0/5] Вытаскиваем действия из повтора...', end='')
     # record = [[(скрин_стандартизированный_np), таймер], [...]]
     record_opt = [[item[0], 0] for item in record]
     # изначально -  record_opt = [[(скрин_стандартизированный_np), 0], [...]]
@@ -155,21 +154,21 @@ def record_processing(actions_path, record):
     for i in range(len(action_list)):
         action_list[i][3] = vectorization_action(action_list[i][3], 3)
     # action_list = [[тайминг, корд1, корд2, (действие_вект)], [...]]
-    print(f'\r[1/5] Вычисляем векторы действий...{" "*20}', end='')
+    print(f'\r\t[1/5] Вычисляем векторы действий...{" "*20}', end='')
 
     # Убираем расширение файла и путь до файла, оставляем только имя песни
     name = actions_path[actions_path.rfind('\\') + 1: -4]
 
-    print(f'\r[2/5] Заполняем действия по таймингам 1/3...{" "*20}', end='')
+    print(f'\r\t[2/5] Заполняем действия по таймингам 1/3...{" "*20}', end='')
     record_opt = actions_processing(action_list, record, record_opt, 1)     # Заполняем первые действия
 
-    print(f'\r[2/5] Заполняем действия по таймингам 2/3...{" "*20}', end='')
+    print(f'\r\t[2/5] Заполняем действия по таймингам 2/3...{" "*20}', end='')
     record_opt = actions_processing(action_list, record, record_opt, 2)     # Заполняем вторые действия
 
-    print(f'\r[2/5] Заполняем действия по таймингам 3/3...{" "*20}', end='')
+    print(f'\r\t[2/5] Заполняем действия по таймингам 3/3...{" "*20}', end='')
     record_opt = actions_processing(action_list, record, record_opt, 0)     # Заполняем нулевые действия
 
-    print(f'\r[3/5] Заполняем пропуски...{" "*20}', end='')
+    print(f'\r\t[3/5] Заполняем пропуски...{" "*20}', end='')
 
     # Ставим на то, что последний фрейм это ничего не делание
     if record_opt[-1][1] == 0:
@@ -179,13 +178,18 @@ def record_processing(actions_path, record):
     for i in range(len(record_opt) - 2, -1, -1):
         if record_opt[i][1] == 0:
             record_opt[i][1] = [record_opt[i + 1][1][0], record_opt[i + 1][1][1], (1, 0, 0)]
-    print(f'\r[4/5] Сохраняем результат...', end='')
+    print(f'\r\t[4/5] Сохраняем результат...', end='')
     osufiles.save_record(record_opt, name)
 
-    print(f'\r[5/5] Готово!')
+    print(f'\r\t[5/5] Готово!')
 
 
 def main():
+    """
+    Запускаем osu.
+    Переходим в список песен.
+    Запускаем код.
+    """
     max_fps = 30
     offsets = (0x128, 0x58, 0x32C, 0xC64)   # Для версии b20240820.1
     image_shape = (80, 60)
@@ -199,9 +203,27 @@ def main():
 
     menu = MenuController(playfield_monitor, len(osufiles.get_song_list(osu_folder)))
 
-    actions_path, record = get_replay_current_song(menu, osu_process, timer_address, image_shape, hwnd, max_fps)
-    # record = record_repetition(menu, actions_path, osu_process, timer_address)
-    record_processing(actions_path, record)
+    song_dict = osufiles.get_correct_song_dict(osu_folder)
+    song_iterator = 0
+
+    for name, songs in song_dict.items():
+        start = songs[1]
+        for i in range(start, songs[0]):
+            print(f'Идем к песне [{name}], Записано: {i}/{songs[0]} вариаций')
+
+            # Выбираем песню по координатам
+            menu.choose_certain_song((song_iterator, i))
+
+            # Запускаем запись
+            actions_path, record = get_replay_current_song(menu, osu_process, timer_address, image_shape, hwnd, max_fps)
+            record_processing(actions_path, record)
+
+            # Запись об успехе обновляется
+            song_dict[name][1] = i + 1
+            osufiles.save_song_dict(song_dict)
+        song_iterator += 1
+
+    print('Все песни записаны!')
 
 
 if __name__ == '__main__':
