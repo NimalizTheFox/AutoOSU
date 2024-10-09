@@ -191,7 +191,7 @@ def main():
     Запускаем код.
     """
     max_fps = 30
-    offsets = (0x128, 0x58, 0x32C, 0xC64)   # Для версии b20240820.1
+    offsets = (0x8, 0x8, 0x3F4, 0xA4)   # Для версии b20241001
     image_shape = (80, 60)
     osu_folder = osufiles.OSU_PATH
 

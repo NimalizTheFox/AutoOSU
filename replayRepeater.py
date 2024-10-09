@@ -51,7 +51,7 @@ def main():
 
     osu_process = None
 
-    offsets = (0x128, 0x58, 0x32C, 0xC64)   # Для версии b20240820.1
+    offsets = (0x8, 0x8, 0x3F4, 0xA4)   # Для версии b20241001
 
     # Запуск и выделение процесса osu
     while osu_process is None:
