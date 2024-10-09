@@ -15,8 +15,6 @@ def create_topology():
         os.mkdir('data\\osu_parse')
     if not os.path.isdir('data\\records'):
         os.mkdir('data\\records')
-    if not os.path.isdir('data\\songs'):
-        os.mkdir('data\\songs')
     if not os.path.isfile('data\\song_list.txt'):
         open('data\\song_list.txt', 'w').close()
 
@@ -144,6 +142,25 @@ def read_record(record_path, image_shape):
             [temp[0], temp[1], (temp[2], temp[3], temp[4])]
         ])
     return record
+
+
+def get_all_records():
+    """Возвращает имена всех записей"""
+    return os.listdir('data\\records')
+
+
+def record_to_dataset(record):
+    """Превращает запись в набор данных, который можно использовать в обучении модели"""
+    dataset_x = []
+    dataset_y = []
+    np_frames = np.array([frame[0] for frame in record])
+    actions_list = [frame[1] for frame in record]
+
+    for i in range(4, len(np_frames) + 1):
+        dataset_x.append(np_frames[i - 4: i])
+        dataset_y.append(actions_list[i - 1])
+
+    return dataset_x, dataset_y
 
 
 def main():
