@@ -89,14 +89,19 @@ class PlayFieldController:
         # По-хорошему нужно зарандомить кнопку, но пока без этого
         print("работаем!")
         while True:
-            action = await self.actions_queue.get()
+            cord, button = await self.actions_queue.get()
 
-            x = round(self.playfield_monitor['left'] + action[0][0] * self.playfield_monitor['width'])
-            y = round(self.playfield_monitor['top'] + action[0][1] * self.playfield_monitor['height'])
-            if action[1] == 0:
+            cord = cord.numpy().tolist()
+            button = int(button)
+
+            # print(cord, button)
+
+            x = round(self.playfield_monitor['left'] + cord[0] * self.playfield_monitor['width'])
+            y = round(self.playfield_monitor['top'] + cord[1] * self.playfield_monitor['height'])
+            if button == 0:
                 pg.keyUp('x')
                 pg.moveTo(x, y)
-            elif action[1] == 1:
+            elif button == 1:
                 pg.keyUp('x')   # На случай, если идет сразу после д2
                 pg.moveTo(x, y)
                 pg.keyDown('z')

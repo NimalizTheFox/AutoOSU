@@ -1,4 +1,5 @@
 import os
+import random
 import struct
 import numpy as np
 import zlib
@@ -129,7 +130,7 @@ def read_record(record_path, image_shape):
     offset = 4
 
     np_list = record_file[offset:offset + 9600 * length]
-    np_arr = np.frombuffer(np_list, np.float16).reshape((length, image_shape[1], image_shape[0], 1)),
+    np_arr = np.frombuffer(np_list, np.float16).reshape((length, image_shape[1], image_shape[0], 1))
     offset += 9600 * length
 
     record = []
@@ -139,7 +140,7 @@ def read_record(record_path, image_shape):
 
         record.append([
             np_arr[i],
-            [temp[0], temp[1], (temp[2], temp[3], temp[4])]
+            [temp[0], temp[1], temp[2], temp[3], temp[4]]
         ])
     return record
 
@@ -161,6 +162,51 @@ def record_to_dataset(record):
         dataset_y.append(actions_list[i - 1])
 
     return dataset_x, dataset_y
+
+
+# def record_to_dataset(record):
+#     """Превращает запись в набор данных, который можно использовать в обучении модели.
+#     Не используется до момента починки сбора датасета"""
+#     np_frames = [frame[0] for frame in record]
+#     actions_list = [frame[1] for frame in record]
+#
+#     print(len(actions_list))
+#
+#     ind0 = []
+#     ind1 = []
+#     ind2 = []
+#     for i in range(4, len(actions_list)):
+#         print(actions_list[i])
+#         if actions_list[i][3] == 1:
+#             ind1.append(i)
+#         elif actions_list[i][4] == 1:
+#             ind2.append(i)
+#         else:
+#             ind0.append(i)
+#
+#     # Обеспечиваем равномерность выборки
+#     act_len = len(ind1)
+#
+#     print(act_len)
+#     print(len(ind0))
+#
+#     random.shuffle(ind1)
+#     random.shuffle(ind2)
+#     random.shuffle(ind0)
+#
+#     ind0 = ind0[:act_len]
+#     ind2 = ind2[:act_len]
+#
+#     indexes = ind0 + ind1 + ind2
+#
+#     print(len(indexes))
+#
+#     dataset_x = []
+#     dataset_y = []
+#     for i in indexes:
+#         dataset_x.append(np.array(np_frames[i - 3: i + 1]))
+#         dataset_y.append(actions_list[i])
+#     return dataset_x, dataset_y
 
 
 def main():
