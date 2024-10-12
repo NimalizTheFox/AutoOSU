@@ -120,7 +120,7 @@ def actions_processing(action_list, record, record_opt, action):
     act_iterator = 0
     finish = False
     # Проходимся вообще по всей траектории
-    while act_iterator < len(action_list) and not finish:
+    while act_iterator < len(action_list) and frame_i < len(record) and not finish:
         # Проходимся по всем action действиям
         while action_list[act_iterator][3] != action and not finish:
             # Пока есть action действия - двигаемся вперед
@@ -189,7 +189,7 @@ def record_processing(actions_path, record):
     name = actions_path[actions_path.rfind('\\') + 1: -4]
     osufiles.save_record(record_opt, name)
 
-    print(f'\r\t[5/5] Готово!')
+    print(f'\r\t[5/5] Готово!{" "*20}')
 
 
 def main():

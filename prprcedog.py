@@ -32,8 +32,8 @@ class ThreadStackFinder:
             teb = thread.teb_base
             # There is something wrong when process run in wow64, get teb from lib must add 0x2000.
             # 第三方库作者的bug,如果是64位系统运行32位程序 ,这里相差了0x2000
-            if target_process.is_wow_64:
-                teb = teb + 0x2000
+            # if target_process.is_wow_64:
+            #     teb = teb + 0x2000
             # print("teb:", hex(teb), "id:", hex(thread.tid))
             stack_base_address = teb + pointer_size
             stack_base = target_process.read_ptr(stack_base_address)
