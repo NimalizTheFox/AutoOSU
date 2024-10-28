@@ -59,7 +59,6 @@ class MenuController:
             self._press_key('down')
             pg.sleep(0.2)
 
-
     def save_replay(self):
         self._press_key('f2')
         pg.sleep(2)
@@ -79,10 +78,14 @@ class MenuController:
         self._press_key('esc')
         pg.sleep(0.4)
 
+
 class PlayFieldController:
-    def __init__(self, playfield_monitor):
+    def __init__(self, playfield_monitor, up_time, hold_time):
         self.playfield_monitor = playfield_monitor
-        self.actions_queue = asyncio.Queue()
+        self.actions_queue = asyncio.Queue(1)
+        self.up_time = up_time
+        self.hold_time = hold_time  # Сколько секунд держать кнопку для срабатывания 1 действия
+
         asyncio.create_task(self.click_and_move())
 
     async def click_and_move(self):
@@ -94,23 +97,35 @@ class PlayFieldController:
             cord = cord.numpy().tolist()
             button = int(button)
 
-            # print(cord, button)
-
             x = round(self.playfield_monitor['left'] + cord[0] * self.playfield_monitor['width'])
             y = round(self.playfield_monitor['top'] + cord[1] * self.playfield_monitor['height'])
             if button == 0:
                 pg.keyUp('x')
+                pg.keyUp('z')
+
+                # pg.sleep(self.up_time)
+                await asyncio.sleep(self.up_time)   # Оно с ним лучшие результаты показывает, я не знаю почему
+
                 pg.moveTo(x, y)
             elif button == 1:
+                pg.keyUp('z')   # На случай, если идет сразу после д1
                 pg.keyUp('x')   # На случай, если идет сразу после д2
+
+                # pg.sleep(self.up_time)
+                await asyncio.sleep(self.up_time)
+
                 pg.moveTo(x, y)
                 pg.keyDown('z')
-                # pg.sleep(0.01)
-                await asyncio.sleep(0.01)
+
+                # pg.sleep(self.hold_time)
+                await asyncio.sleep(self.hold_time)
+
                 pg.keyUp('z')
             else:
                 pg.moveTo(x, y)
                 pg.keyDown('x')
+
+            # print(button, cord)
 
             self.actions_queue.task_done()
 

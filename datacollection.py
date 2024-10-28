@@ -57,7 +57,7 @@ def get_replay_current_song(menu: MenuController, osu_process, timer_address, im
 
     last_replay = osufiles.get_last_file(osufiles.OSU_PATH + r'\Replays')
     action_list = get_actions_list_from_replay(last_replay)     # Получаем список действий из повтора + обработка
-    name = last_replay[last_replay.rfind('\\') + 8: -21]        # Поучаем название песни
+    name = last_replay[last_replay.rfind('\\') + 8: -21]        # Получаем название песни
     actions_path = rf'data\osu_parse\{name}.bin'
     save_actions_list(action_list, actions_path)                # И сохраняем в папку проекта
     return actions_path, record
@@ -109,11 +109,6 @@ def record_repetition(menu: MenuController, actions_path, osu_process, timer_add
     return record
 
 
-def vectorization_action(action, amount_actions):
-    """Возвращает вектор из 0 и 1, где 1 - нужное действие по индексу"""
-    return tuple([0 if i != action else 1 for i in range(amount_actions)])
-
-
 def actions_processing(action_list, record, record_opt, action):
     """Вставка определенного действия из списка действий в соответствии с таймингами записи"""
     frame_i = 1
@@ -144,6 +139,26 @@ def actions_processing(action_list, record, record_opt, action):
     return record_opt
 
 
+def final_polishing(action_list, record, record_opt):
+    """Заменяем все концы вторых действий на бездействие, чтобы разделить разные слайдеры в записи"""
+    zero_act_list = [action for action in action_list if action[3] == 0]
+
+    finish = False
+    frame_iterator = 1
+    for action in zero_act_list:
+        while record[frame_iterator][1] < action[0] and not finish:
+            if frame_iterator < len(record) - 1:
+                frame_iterator += 1
+            else:
+                finish = True
+        # Если это фрейм с концом 2 действий, то перезаписываем его как бездействие (0 действие)
+        if not finish and record_opt[frame_iterator - 1][1][2] == 2:
+            record_opt[frame_iterator - 1][1] = action[1:]
+
+        frame_iterator += 1
+    return record_opt
+
+
 def record_processing(actions_path, record):
     """Пишет действия вместо временных меток и сохраняет"""
     print('\tПреобразование записи...')
@@ -151,44 +166,42 @@ def record_processing(actions_path, record):
     # record = [[(скрин_стандартизированный_np), таймер], [...]]
     record_opt = [[frame[0], 0] for frame in record]
     # изначально -  record_opt = [[(скрин_стандартизированный_np), 0], [...]]
-    # в конце -     record_opt = [[(скрин_стандартизированный_np), [корд1, корд2, действие_в_векторе(1, 0, 0)]], [...]]
+    # в конце -     record_opt = [[(скрин_стандартизированный_np), [корд1, корд2, действие]], [...]]
 
     action_list = read_actions_list(actions_path)
     # action_list = [[тайминг, корд1, корд2, действие], [...]]
 
-    print(f'\r\t[1/5] Вычисляем векторы действий...{" "*20}', end='')
-    for i in range(len(action_list)):
-        action_list[i][3] = vectorization_action(action_list[i][3], 3)
-    # action_list = [[тайминг, корд1, корд2, (действие_вект)], [...]]
-
-    print(f'\r\t[2/5] Заполняем действия по таймингам 1/3...{" "*20}', end='')
+    print(f'\r\t[1/5] Заполняем действия по таймингам 1/3...{" "*20}', end='')
     # Заполняем первые действия
-    record_opt = actions_processing(action_list, record, record_opt, vectorization_action(1, 3))
+    record_opt = actions_processing(action_list, record, record_opt, 1)
 
-    print(f'\r\t[2/5] Заполняем действия по таймингам 2/3...{" "*20}', end='')
+    print(f'\r\t[1/5] Заполняем действия по таймингам 2/3...{" "*20}', end='')
     # Заполняем вторые действия
-    record_opt = actions_processing(action_list, record, record_opt, vectorization_action(2, 3))
+    record_opt = actions_processing(action_list, record, record_opt, 2)
 
-    print(f'\r\t[2/5] Заполняем действия по таймингам 3/3...{" "*20}', end='')
+    print(f'\r\t[1/5] Заполняем действия по таймингам 3/3...{" "*20}', end='')
     # Заполняем нулевые действия
-    record_opt = actions_processing(action_list, record, record_opt, vectorization_action(0, 3))
+    record_opt = actions_processing(action_list, record, record_opt, 0)
+
+    print(f'\r\t[2/5] Заканчиваем слайдеры правильно...{" "*20}', end='')
+    # Меняем концы 2 действий на 0 действие
+    record_opt = final_polishing(action_list, record, record_opt)
 
     print(f'\r\t[3/5] Заполняем пропуски...{" "*20}', end='')
-
-    # Ставим на то, что последний фрейм это ничего не делание
+    # Ставим на то, что последний фрейм это бездействие
     if record_opt[-1][1] == 0:
-        record_opt[-1][1] = [0.5, 0.5, (1, 0, 0)]
+        record_opt[-1][1] = [0.5, 0.5, 0]
 
     # Заполняем не заполненные фреймы нулями
     for i in range(len(record_opt) - 2, -1, -1):
         if record_opt[i][1] == 0:
-            record_opt[i][1] = [record_opt[i + 1][1][0], record_opt[i + 1][1][1], (1, 0, 0)]
+            record_opt[i][1] = [record_opt[i + 1][1][0], record_opt[i + 1][1][1], 0]
 
-    print(f'\r\t[4/5] Сохраняем результат...', end='')
+    print(f'\r\t[4/5] Сохраняем результат...{" "*20}', end='')
     # Убираем расширение файла и путь до файла, оставляем только имя песни
     name = actions_path[actions_path.rfind('\\') + 1: -4]
-    osufiles.save_record(record_opt, name)
-
+    path = f'data\\records\\{name}.comprec'
+    osufiles.save_record(record_opt, path)
     print(f'\r\t[5/5] Готово!{" "*20}')
 
 

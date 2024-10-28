@@ -1,6 +1,8 @@
 import os
 import random
 import struct
+import time
+
 import numpy as np
 import zlib
 
@@ -101,23 +103,23 @@ def get_last_file(osu_folder):
     return latest_file
 
 
-def save_record(record, name):
+def save_record(record, path):
     """Сохраняет файл записи попутно его сжимая"""
-    # каждый фрейм - [(скриншот), [корд1, корд2, (вектор действий)]]
+    # каждый фрейм - [(скриншот), [корд1, корд2, действие]]
     result = struct.pack('i', len(record))
 
-    np_list = np.array([frame[0] for frame in record])
-    result += np_list.tobytes()
+    frames_np = np.array([frame[0] for frame in record])
+    result += frames_np.tobytes()
 
-    for frame in record:
-        result += struct.pack('2f 3B', frame[1][0], frame[1][1], frame[1][2][0], frame[1][2][1], frame[1][2][2])
+    actions_np = np.array([frame[1] for frame in record], dtype=np.float16)
+    result += actions_np.tobytes()
 
-    result_comp = zlib.compress(result, zlib.Z_BEST_COMPRESSION)    # Сжимаем запись
+    result_comp = zlib.compress(result, 3)  # Сжимаем запись
 
-    with open(rf'data\records\{name}.comprec', 'wb') as file:
+    with open(path, 'wb') as file:
         file.write(result_comp)
         file.flush()
-    return rf'data\records\{name}.comprec'
+    return path
 
 
 def read_record(record_path, image_shape):
@@ -129,25 +131,28 @@ def read_record(record_path, image_shape):
     length = struct.unpack('i', record_file[:4])[0]
     offset = 4
 
-    np_list = record_file[offset:offset + 9600 * length]
-    np_arr = np.frombuffer(np_list, np.float16).reshape((length, image_shape[1], image_shape[0], 1))
+    frames_byte = record_file[offset:offset + 9600 * length]
+    frames_np = np.frombuffer(frames_byte, np.float16).reshape((length, image_shape[1], image_shape[0], 1))
     offset += 9600 * length
 
-    record = []
-    for i in range(length):
-        temp = struct.unpack('2f 3B', record_file[offset:offset + 11])
-        offset += 11
+    actions_byte = record_file[offset:]
+    actions_np = np.frombuffer(actions_byte, np.float16).reshape((length, 3))
 
-        record.append([
-            np_arr[i],
-            [temp[0], temp[1], temp[2], temp[3], temp[4]]
-        ])
+    record = [[frames_np[i], list(actions_np[i])] for i in range(length)]
     return record
 
 
 def get_all_records():
     """Возвращает имена всех записей"""
     return os.listdir('data\\records')
+
+
+def get_all_insane_records():
+    """Возвращает имена всех записей"""
+    record_list = os.listdir('data\\records')
+    record_list = [record_list[i] for i in range(len(record_list))
+                   if 'insane' in record_list[i].lower() or 'hard' in record_list[i].lower()]
+    return record_list
 
 
 def record_to_dataset(record):
@@ -164,49 +169,51 @@ def record_to_dataset(record):
     return dataset_x, dataset_y
 
 
-# def record_to_dataset(record):
-#     """Превращает запись в набор данных, который можно использовать в обучении модели.
-#     Не используется до момента починки сбора датасета"""
-#     np_frames = [frame[0] for frame in record]
-#     actions_list = [frame[1] for frame in record]
-#
-#     print(len(actions_list))
-#
-#     ind0 = []
-#     ind1 = []
-#     ind2 = []
-#     for i in range(4, len(actions_list)):
-#         print(actions_list[i])
-#         if actions_list[i][3] == 1:
-#             ind1.append(i)
-#         elif actions_list[i][4] == 1:
-#             ind2.append(i)
-#         else:
-#             ind0.append(i)
-#
-#     # Обеспечиваем равномерность выборки
-#     act_len = len(ind1)
-#
-#     print(act_len)
-#     print(len(ind0))
-#
-#     random.shuffle(ind1)
-#     random.shuffle(ind2)
-#     random.shuffle(ind0)
-#
-#     ind0 = ind0[:act_len]
-#     ind2 = ind2[:act_len]
-#
-#     indexes = ind0 + ind1 + ind2
-#
-#     print(len(indexes))
-#
-#     dataset_x = []
-#     dataset_y = []
-#     for i in indexes:
-#         dataset_x.append(np.array(np_frames[i - 3: i + 1]))
-#         dataset_y.append(actions_list[i])
-#     return dataset_x, dataset_y
+def record_to_dataset_1_act(record):
+    """Превращает запись в набор данных, который можно использовать в обучении модели"""
+    np_frames = [frame[0] for frame in record]
+    actions_list = [frame[1] for frame in record]
+    actions_list = [[act[0], act[1], one_hot_encoding(act[2], 3)] for act in actions_list]
+
+    ind0 = []
+    ind1 = []
+    ind2 = []
+    for i in range(4, len(actions_list)):
+        if actions_list[i][2][1] == 1:
+            ind1.append(i)
+        elif actions_list[i][2][2] == 1:
+            ind2.append(i)
+        else:
+            ind0.append(i)
+
+    # Обеспечиваем равномерность выборки
+    act_len = int(len(ind1) * 1.5)
+
+    random.shuffle(ind1)
+    random.shuffle(ind2)
+    random.shuffle(ind0)
+
+    ind0 = ind0[:act_len]
+    ind2 = ind2[:act_len]
+
+    indexes = ind0 + ind1 + ind2
+
+    dataset_x = []
+    dataset_y = []
+    for i in indexes:
+        dataset_x.append(np.array(np_frames[i - 3: i + 1]))
+        dataset_y.append(actions_list[i])
+    return dataset_x, dataset_y
+
+
+def one_hot_encoding(action, amount_actions):
+    """Возвращает вектор из 0 и 1, где 1 - нужное действие по индексу aka One-Hot encoding"""
+    return tuple([0 if i != action else 1 for i in range(amount_actions)])
+
+
+def one_hot_decoding(action):
+    """Превращает вектор из 0 и 1 в одно int значение, которое соответствует индексу единицы в списке"""
+    return action.index(max(action))
 
 
 def main():
@@ -214,6 +221,14 @@ def main():
     # rec = read_record('data\\records\\Nanakura Rin (CV Hayami Saori) & Kitahama Eiji (CV Okamoto Nobuhiko) - Blouse [Normal].comprec', image_shape)
 
     # song_dict = get_songs_from_folders(OSU_PATH)
+
+    # record = read_record('data/Aimer - Through My Blood AM [Daybreak].comprec.comprec', image_shape)
+    # print(record[100][1])
+    # record[100][1][2] = one_hot_encoding(record[100][1][2], 3)
+    # print(record[100][1])
+
+
+
 
 
 

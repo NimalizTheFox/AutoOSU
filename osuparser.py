@@ -4,6 +4,7 @@ from osupyparser import OsuFile, ReplayFile
 import struct
 import os
 
+
 def parser_map(path: str):
     """Нужен .osu файл"""
     data = OsuFile(path).parse_file()
@@ -41,7 +42,7 @@ def get_actions_list_from_replay(path_to_replay):
     frames = full_data['frames']    # Получение действий из всех данных
 
     actions_list = []
-    timer = -20     # Смещение таймера, иначе действие производится слишком поздно
+    timer = -8     # Смещение таймера, иначе действие производится слишком поздно
     for frame in frames:
         timer += frame.delta
         actions_list.append((
@@ -84,10 +85,7 @@ def get_actions_list_from_replay(path_to_replay):
                 actions_list.append(new_actions_list[i].copy())
 
     actions_list.append([actions_list[-1][0] + 15, actions_list[-1][1], actions_list[-1][2], 0])
-    # Удалить половину или две трети всех двоек, они не нужны для работы, но занимают цикл
-
     os.remove(path_to_replay)       # Удаляем повтор, чтобы не путать последующие запуски
-
     return actions_list
 
 
@@ -103,14 +101,13 @@ def get_osu_process(osu_folder):
                 break
         if osu_process is None:
             os.startfile(osu_folder + '\\osu!.exe')
-            time.sleep(2)
+            time.sleep(3)
     return osu_process
 
 
 def main():
     path_rep = 'osu_repls/osu! - Nanakura Rin (CV Hayami Saori) & Kitahama Eiji (CV Okamoto Nobuhiko) - Blouse [Normal] (2024-09-07) Osu.osr'
     # path_rep_2 = 'osu_repls/osu! - Nanakura Rin - Blouse [Normal] (2024-09-08) Osu.osr'
-
 
     actions_list = get_actions_list_from_replay(path_rep)
     print(len(actions_list))
@@ -120,11 +117,6 @@ def main():
     save_actions_list(actions_list, 'osu_parse/1.bin')       # Запись действий реплея на диск (~8мс на 1881 действие)
     file_actions_list = read_actions_list('osu_parse/1.bin')   # Чтение действий реплея (~1 мс на 1881 действий)
     print(len(file_actions_list))
-
-
-
-
-
 
 
 if __name__ == '__main__':

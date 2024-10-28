@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 import osufiles
-from osuneuro import load_model, compute_action
+from osuneuro import load_model, compute_action_cord, compute_action_act
 from captureosu import get_frame, get_playfield_monitor, screenshot_standardization, get_hwnd, get_window_text
 from osucontrol import PlayFieldController
 from osuparser import get_osu_process
@@ -21,14 +21,15 @@ async def main():
     max_fps = 30
     min_frame_time = 1 / max_fps - 1 / 60
 
-    if not os.path.exists('model.keras'):
+    if not os.path.exists('model_act.keras') or not os.path.exists('model_cord.keras'):
         print('Сначала обучите модель!\nДостаточно просто запустить osu!, перейти в список песен и запустить файл datacollection.py, все остальное сделает автоматика\n')
         raise FileExistsError('Модель отсутствует!')
 
     osu_process = get_osu_process(osu_folder)
     timer_address = get_timer_address(osu_process, offsets) + offsets[-1]
 
-    model = load_model()
+    model_cord = load_model('model_cord.keras')
+    model_act = load_model('model_act.keras')
     print('Модель загружена')
 
     hwnd = get_hwnd()
@@ -37,7 +38,7 @@ async def main():
     playfield_monitor = get_playfield_monitor(hwnd)
 
     # Контроллер
-    controller = PlayFieldController(playfield_monitor)
+    controller = PlayFieldController(playfield_monitor, 0.002, 0.005)
 
     # menu.start_current_song()
     while True:
@@ -73,9 +74,12 @@ async def main():
             np_screenshots = np.roll(np_screenshots, -1, axis=1)
             np_screenshots[0][-1] = screenshot
 
-            action = compute_action(model, np_screenshots)
-            controller.actions_queue.put_nowait(action)
+            cord = compute_action_cord(model_cord, np_screenshots)
+            act = compute_action_act(model_act, np_screenshots)
 
+            action = (cord, act)
+
+            await controller.actions_queue.put(action)
             await asyncio.sleep(max(0., min_frame_time - (time.time() - start)))  # Обеспечение нужного фреймрейта
 
 
